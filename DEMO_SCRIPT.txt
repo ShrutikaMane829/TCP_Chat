@@ -1,0 +1,139 @@
+TCP Chat Application (login, 1-1, multi, broadcast) DEMO Script
+
+Objective: Demonstrate login, DM, MULTI, BROADCAST, and metrics/logs.
+
+
+Step 1: Start the Server 
+
+Expected output:
+Server started on port 5000
+
+
+Step 2: Start Client 1 (raj)
+
+User input:
+Username: raj
+Password: pass1
+
+Expected output:
+Logged in as raj
+Commands: dm <user> <msg> | multi <u1,u2> <msg> | broadcast <msg> | quit
+
+
+Step 3: Start Client 2 (priya)
+
+User input:
+Username: priya
+Password: pass2
+
+Expected output:
+Logged in as priya
+Commands: dm <user> <msg> | multi <u1,u2> <msg> | broadcast <msg> | quit
+
+
+Step 4: Start Client 3 (amit)
+
+User input:
+Username: amit
+Password: pass3
+
+Expected output:
+Logged in as amit
+Commands: dm <user> <msg> | multi <u1,u2> <msg> | broadcast <msg> | quit
+
+
+
+Step 5: Send a Direct Message (DM)
+
+Client 1 input:
+dm priya Hello priya!
+
+Client 2 sees:
+[DM from raj]: Hello priya!
+
+Server log:
+raj -> priya: Hello priya!
+
+
+
+Step 6: Send a MULTI Message (MULTI)
+
+Client 1 input:
+multi priya,amit Hello group!
+
+Client 2 sees:
+[MULTI from raj]: Hello group!
+
+Client 3 sees:
+[MULTI from raj]: Hello group!
+
+Server log:
+raj -> [priya,amit]: Hello group!
+
+
+
+Step 7: Send a BROADCAST Message (BROADCAST)
+
+Client 1 input:
+broadcast Hello Everyone!
+
+Client 2 sees:
+[BROADCAST from raj]: Hello Everyone!
+
+Client 3 sees:
+[BROADCAST from raj]: Hello Everyone!
+
+Server log:
+raj broadcast: Hello Everyone!
+
+
+
+Step 8: Reply from Another Client
+
+Client 2 input:
+dm raj Thanks for the message!
+
+Client 1 sees:
+[DM from priya]: Thanks for the message!
+
+Server log:
+priya -> raj: Thanks for the message!
+
+
+
+Step 9: Exit Clients
+
+Client 1 input:
+quit
+
+Client 2 input:
+quit
+
+Client 3 input:
+quit
+
+Server log:
+raj logged out
+priya logged out
+amit logged out
+
+
+Summary of Features Demonstrated:
+
+- LOGIN - All 3 users logged in successfully
+- DM (Direct Message) - raj sent message to priya
+- MULTI (Multi-user) - raj sent message to priya and amit
+- BROADCAST - raj sent message to all users
+- Server Logs - All activities logged on server
+- Graceful Exit - All users disconnected properly
+
+
+Test Credentials:
+
+Username: raj      Password: pass1
+Username: priya    Password: pass2
+Username: amit     Password: pass3
+Username: neha     Password: pass4
+
+
+End of Demo
