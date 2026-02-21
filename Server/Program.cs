@@ -6,7 +6,17 @@ using System.Text;
 using System.Text.Json;
 
 // Users
-var users = new Dictionary<string, string> { ["raj"] = "pass1", ["priya"] = "pass2", ["amit"] = "pass3", ["neha"] = "pass4" };
+//var users = new Dictionary<string, string> { ["user1"] = "pass1", ["user2"] = "pass2", ["user3"] = "pass3" };
+
+// dynamic user pass 
+var users = new Dictionary<string, string>(); Console.WriteLine("=== Generated Credentials ==="); 
+for (int i = 1; i <= 10; i++) 
+{ 
+    var username = $"user{i}"; var password = $"pass{i}"; users[username] = password; 
+    Console.WriteLine($"{username} / {password}");
+}
+Console.WriteLine("============================\n");
+
 var sessions = new ConcurrentDictionary<string, ClientSession>();
 var metrics = new Metrics();
 
@@ -104,15 +114,25 @@ async Task HandleClient(TcpClient client)
                     metrics.RecordMsg(sw.Elapsed.TotalMilliseconds);
                     AuditLog("DM", user, msg.To!, "DM", bytes);
                 }
+                else
+                {
+                    if (sessions.TryGetValue(user, out var sender))
+                        await sender.Send(new Msg { Type = "ERROR", Message = $"User '{msg.To}' not found or offline" });
+                }
             }
             // Multi message
             else if (msg.Type == "MULTI" && user != null)
             {
+                var notFound = new List<string>();
                 foreach (var u in msg.ToList ?? new())
                 {
                     if (sessions.TryGetValue(u, out var target))
                         await target.Send(new Msg { Type = "MULTI", From = user, Message = msg.Message });
+                    else
+                        notFound.Add(u);
                 }
+                if (notFound.Any() && sessions.TryGetValue(user, out var sender))
+                    await sender.Send(new Msg { Type = "ERROR", Message = $"Users not found: {string.Join(", ", notFound)}" });
                 metrics.RecordMsg(sw.Elapsed.TotalMilliseconds);
                 AuditLog("MULTI", user, string.Join(",", msg.ToList ?? new()), "MULTI", bytes);
             }

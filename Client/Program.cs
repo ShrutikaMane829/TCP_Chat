@@ -2,19 +2,44 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
-// Login
-Console.Write("Username: ");
-var user = Console.ReadLine();
-Console.Write("Password: ");
-var pass = Console.ReadLine();
+// Login loop
+TcpClient client;
+NetworkStream stream;
+string? user;
 
-// Connect
-var client = new TcpClient();
-await client.ConnectAsync("127.0.0.1", 5000);
-var stream = client.GetStream();
+while (true)
+{
+    Console.Write("Username: ");
+    user = Console.ReadLine();
+    Console.Write("Password: ");
+    var pass = Console.ReadLine();
 
-// Send login request
-await Send(new Msg { Type = "LOGIN_REQ", Username = user, Password = pass });
+    // Connect
+    client = new TcpClient();
+    await client.ConnectAsync("127.0.0.1", 5000);
+    stream = client.GetStream();
+
+    // Send login request
+    await Send(new Msg { Type = "LOGIN_REQ", Username = user, Password = pass });
+
+    // Wait for login response
+    var buffer = new byte[4096];
+    var bytes = await stream.ReadAsync(buffer);
+    var json = Encoding.UTF8.GetString(buffer, 0, bytes);
+    var loginResp = JsonSerializer.Deserialize<Msg>(json);
+
+    if (loginResp?.Ok == true)
+    {
+        Console.WriteLine($"\n✓ Logged in as {user}");
+        Console.WriteLine("Commands: dm <user> <msg> | multi <u1,u2> <msg> | broadcast <msg> | quit");
+        break;
+    }
+    else
+    {
+        Console.WriteLine($"✗ Wrong username or password\n");
+        client.Close();
+    }
+}
 
 // Receive messages
 _ = Task.Run(async () =>
@@ -30,21 +55,7 @@ _ = Task.Run(async () =>
             var json = Encoding.UTF8.GetString(buffer, 0, bytes);
             var msg = JsonSerializer.Deserialize<Msg>(json);
 
-            if (msg?.Type == "LOGIN_RESP")
-            {
-                if (msg.Ok)
-                {
-                    Console.WriteLine($"\n✓ Logged in as {user}");
-                    Console.WriteLine("Commands: dm <user> <msg> | multi <u1,u2> <msg> | broadcast <msg> | quit");
-                    Console.Write("> ");
-                }
-                else
-                {
-                    Console.WriteLine($"\n✗ Login failed: {msg.Reason}");
-                    Environment.Exit(1);
-                }
-            }
-            else if (msg?.Type == "DM")
+            if (msg?.Type == "DM")
             {
                 Console.WriteLine($"\n[DM from {msg.From}]: {msg.Message}");
                 Console.Write("> ");
@@ -57,6 +68,11 @@ _ = Task.Run(async () =>
             else if (msg?.Type == "BROADCAST")
             {
                 Console.WriteLine($"\n[BROADCAST from {msg.From}]: {msg.Message}");
+                Console.Write("> ");
+            }
+            else if (msg?.Type == "ERROR")
+            {
+                Console.WriteLine($"\n✗ Error: {msg.Message}");
                 Console.Write("> ");
             }
         }
@@ -73,21 +89,34 @@ while (true)
 
     var parts = input.Split(' ', 3);
 
-    if (parts[0] == "dm" && parts.Length >= 3)
+    if (parts[0] == "dm")
     {
-        await Send(new Msg { Type = "DM", To = parts[1], Message = parts[2] });
+        if (parts.Length < 3)
+            Console.WriteLine("✗ Usage: dm <user> <message>");
+        else
+            await Send(new Msg { Type = "DM", To = parts[1], Message = parts[2] });
     }
-    else if (parts[0] == "multi" && parts.Length >= 3)
+    else if (parts[0] == "multi")
     {
-        await Send(new Msg { Type = "MULTI", ToList = parts[1].Split(',').ToList(), Message = parts[2] });
+        if (parts.Length < 3)
+            Console.WriteLine("✗ Usage: multi <user1,user2> <message>");
+        else
+            await Send(new Msg { Type = "MULTI", ToList = parts[1].Split(',').ToList(), Message = parts[2] });
     }
-    else if (parts[0] == "broadcast" && parts.Length >= 2)
+    else if (parts[0] == "broadcast")
     {
-        await Send(new Msg { Type = "BROADCAST", Message = parts[1] });
+        if (parts.Length < 2)
+            Console.WriteLine("✗ Usage: broadcast <message>");
+        else
+            await Send(new Msg { Type = "BROADCAST", Message = string.Join(' ', parts.Skip(1)) });
     }
     else if (parts[0] == "quit")
     {
         break;
+    }
+    else
+    {
+        Console.WriteLine($"✗ Invalid command '{parts[0]}'. Available commands: dm, multi, broadcast, quit");
     }
 }
 
